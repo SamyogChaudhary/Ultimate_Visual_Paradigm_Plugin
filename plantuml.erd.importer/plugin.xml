@@ -1,0 +1,36 @@
+<plugin
+    id="plantuml.erd.importer"
+    name="PlantUML ERD Importer"
+    description="Imports crow's foot ER diagrams written in PlantUML as real Visual Paradigm tables, foreign keys and ER diagrams."
+    provider="COMP601 Group - Person 5"
+    class="erdimport.ImporterPlugin">
+  <runtime>
+    <library path="classes" relativePath="true"/>
+  </runtime>
+  <actionSets>
+    <actionSet id="plantuml.erd.importer.actionset">
+      <action
+          id="plantuml.erd.importer.file"
+          actionType="generalAction"
+          label="Import ERD File"
+          tooltip="Import crow's foot ER diagram(s) from PlantUML files (.puml)"
+          icon="icons/import.png"
+          style="normal"
+          menuPath="Plugins/#"
+          toolbarPath="Plugins/#">
+        <actionController class="erdimport.ImportFileAction"/>
+      </action>
+      <action
+          id="plantuml.erd.importer.paste"
+          actionType="generalAction"
+          label="Paste ERD Code"
+          tooltip="Paste crow's foot PlantUML code (@startuml ... @enduml) and import it"
+          icon="icons/paste.png"
+          style="normal"
+          menuPath="Plugins/#"
+          toolbarPath="Plugins/#">
+        <actionController class="erdimport.PasteAction"/>
+      </action>
+    </actionSet>
+  </actionSets>
+</plugin>

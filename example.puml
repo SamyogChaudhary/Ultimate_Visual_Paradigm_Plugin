@@ -1,0 +1,218 @@
+@startuml
+' Crow's foot (Information Engineering) notation. Edit in any PlantUML editor
+' (plantuml.com/plantuml, VS Code PlantUML extension) or regenerate from oeo_schema.sql.
+hide circle
+hide empty members
+skinparam linetype ortho
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam dpi 150
+skinparam nodesep 60
+skinparam ranksep 70
+skinparam class {
+  BackgroundColor #D6EAF8
+  HeaderBackgroundColor #7FB3D5
+  BorderColor #1B4F72
+  ArrowColor #1B4F72
+  FontSize 12
+  AttributeFontSize 11
+}
+title OEO Event Management System - Entity Relationship Diagram (3NF)
+legend bottom left
+  <b>PK</b> primary key   <b>FK</b> foreign key   <b>UQ</b> unique   <b>●</b> mandatory (NOT NULL)
+  Crow's foot: ||  one and only one   |o  zero or one   |{  one or many   o{  zero or many
+endlegend
+ 
+entity "PACKAGE" as PACKAGE {
+  * <b>package_id</b> : INT <<PK>>
+  --
+  * package_name : VARCHAR(30) <<UQ>>
+  * discount_rate : DECIMAL(5,2)
+}
+entity "CLIENT_TYPE" as CLIENT_TYPE {
+  * <b>client_type_id</b> : INT <<PK>>
+  --
+  * type_name : VARCHAR(20) <<UQ>>
+  * min_completed_events : INT
+    max_completed_events : INT
+    package_id : INT <<FK>>
+}
+entity "CLIENT" as CLIENT {
+  * <b>client_id</b> : INT <<PK>>
+  --
+  * client_type_id : INT <<FK>>
+  * first_name : VARCHAR(50)
+  * last_name : VARCHAR(50)
+  * street_address : VARCHAR(100)
+  * city : VARCHAR(50)
+  * official_phone : VARCHAR(20)
+  * email : VARCHAR(100)
+    emergency_contact_name : VARCHAR(100)
+    emergency_contact_phone : VARCHAR(20)
+}
+entity "DEPARTMENT" as DEPARTMENT {
+  * <b>department_id</b> : INT <<PK>>
+  --
+  * department_name : VARCHAR(50) <<UQ>>
+}
+entity "EMPLOYEE" as EMPLOYEE {
+  * <b>employee_id</b> : INT <<PK>>
+  --
+    department_id : INT <<FK>>
+  * first_name : VARCHAR(50)
+  * last_name : VARCHAR(50)
+  * street_address : VARCHAR(100)
+  * city : VARCHAR(50)
+    home_phone : VARCHAR(20)
+    home_email : VARCHAR(100)
+  * designation : VARCHAR(50)
+  * date_hired : DATE
+  * salary : DECIMAL(10,2)
+    office_phone : VARCHAR(20)
+  * office_email : VARCHAR(100) <<UQ>>
+  * employee_type : BIT
+}
+entity "EMPLOYMENT_HISTORY" as EMPLOYMENT_HISTORY {
+  * <b>history_id</b> : INT <<PK>>
+  --
+  * employee_id : INT <<FK>>
+  * employer : VARCHAR(100)
+  * position : VARCHAR(50)
+  * start_date : DATE
+    end_date : DATE
+}
+entity "EVENT" as EVENT {
+  * <b>event_number</b> : INT <<PK>>
+  --
+  * client_id : INT <<FK>>
+  * event_name : VARCHAR(100)
+  * event_date : DATE
+  * start_time : TIME
+  * duration_minutes : INT
+    description : VARCHAR(500)
+  * attendee_count : INT
+  * event_type : VARCHAR(30)
+  * requested_venue_type : VARCHAR(30)
+  * booking_status : VARCHAR(20)
+    hold_expires_at : DATETIME2
+}
+entity "CONTRACT" as CONTRACT {
+  * <b>contract_number</b> : INT <<PK>>
+  --
+  * event_number : INT <<FK, UQ>>
+    package_id : INT <<FK>>
+  * date_created : DATE
+  * budget : DECIMAL(10,2)
+  * discount_applied : DECIMAL(10,2)
+  * deposit_paid : DECIMAL(10,2)
+  * refund_amount : DECIMAL(10,2)
+    date_signed : DATE
+  * status : VARCHAR(20)
+    signed_copy_ref : VARCHAR(255)
+}
+entity "CONTRACT_VERSION" as CONTRACT_VERSION {
+  * <b>contract_number</b> : INT <<PK, FK>>
+  * <b>version_number</b> : INT <<PK>>
+  --
+  * date_created : DATETIME2
+  * agreed_event_date : DATE
+  * agreed_start_time : TIME
+  * agreed_duration_minutes : INT
+  * agreed_attendee_count : INT
+  * agreed_budget : DECIMAL(10,2)
+  * agreed_discount : DECIMAL(10,2)
+    change_reason : VARCHAR(255)
+}
+entity "SERVICE" as SERVICE {
+  * <b>service_id</b> : INT <<PK>>
+  --
+  * department_id : INT <<FK>>
+  * service_name : VARCHAR(50) <<UQ>>
+    description : VARCHAR(255)
+  * standard_price : DECIMAL(10,2)
+}
+entity "PACKAGE_SERVICE" as PACKAGE_SERVICE {
+  * <b>package_id</b> : INT <<PK, FK>>
+  * <b>service_id</b> : INT <<PK, FK>>
+  --
+}
+entity "CONTRACT_SERVICE" as CONTRACT_SERVICE {
+  * <b>contract_number</b> : INT <<PK, FK>>
+  * <b>service_id</b> : INT <<PK, FK>>
+  --
+  * quantity : INT
+  * agreed_price : DECIMAL(10,2)
+  * is_package_benefit : BIT
+}
+entity "RESOURCE" as RESOURCE {
+  * <b>resource_id</b> : INT <<PK>>
+  --
+  * department_id : INT <<FK>>
+  * resource_name : VARCHAR(50)
+  * resource_kind : VARCHAR(10)
+  * status : VARCHAR(20)
+}
+entity "VENUE" as VENUE {
+  * <b>resource_id</b> : INT <<PK, FK>>
+  --
+  * venue_type : VARCHAR(30)
+  * capacity : INT
+}
+entity "EQUIPMENT" as EQUIPMENT {
+  * <b>resource_id</b> : INT <<PK, FK>>
+  --
+  * equipment_type : VARCHAR(30)
+  * total_quantity : INT
+  * working_quantity : INT
+}
+entity "RESOURCE_RESERVATION" as RESOURCE_RESERVATION {
+  * <b>reservation_id</b> : INT <<PK>>
+  --
+  * event_number : INT <<FK>>
+  * resource_id : INT <<FK>>
+  * start_datetime : DATETIME2
+  * end_datetime : DATETIME2
+  * quantity_reserved : INT
+  * reservation_status : VARCHAR(20)
+}
+entity "TASK" as TASK {
+  * <b>task_id</b> : INT <<PK>>
+  --
+  * event_number : INT <<FK>>
+  * department_id : INT <<FK>>
+    service_id : INT <<FK>>
+    assigned_employee_id : INT <<FK>>
+    closed_by_employee_id : INT <<FK>>
+  * description : VARCHAR(255)
+  * priority : VARCHAR(10)
+    estimated_duration_minutes : INT
+    scheduled_start : DATETIME2
+    scheduled_end : DATETIME2
+  * status : VARCHAR(20)
+    date_closed : DATETIME2
+}
+PACKAGE |o--o{ CLIENT_TYPE : gives benefits to
+CLIENT_TYPE ||--o{ CLIENT : classifies
+CLIENT ||--o{ EVENT : requests
+EVENT ||--o| CONTRACT : covered by
+PACKAGE |o--o{ CONTRACT : applied to
+CONTRACT ||--|{ CONTRACT_VERSION : has
+CONTRACT ||--o{ CONTRACT_SERVICE : includes
+SERVICE ||--o{ CONTRACT_SERVICE : specified in
+PACKAGE ||--o{ PACKAGE_SERVICE : includes
+SERVICE ||--o{ PACKAGE_SERVICE : part of
+DEPARTMENT ||--o{ SERVICE : provides
+DEPARTMENT |o--o{ EMPLOYEE : employs
+EMPLOYEE ||--o{ EMPLOYMENT_HISTORY : has
+DEPARTMENT ||--o{ RESOURCE : manages
+RESOURCE ||--o| VENUE : is a
+RESOURCE ||--o| EQUIPMENT : is a
+EVENT ||--o{ RESOURCE_RESERVATION : has
+RESOURCE ||--o{ RESOURCE_RESERVATION : reserved in
+EVENT ||--o{ TASK : requires
+DEPARTMENT ||--o{ TASK : handles
+SERVICE |o--o{ TASK : fulfilled by
+EMPLOYEE |o--o{ TASK : assigned to
+EMPLOYEE |o--o{ TASK : closes
+@enduml
+ 

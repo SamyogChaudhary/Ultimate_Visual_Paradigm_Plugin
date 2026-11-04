@@ -17,6 +17,22 @@ Each `@startuml … @enduml` block becomes one ER diagram named after its title.
 
 ## Contents
 - `plantuml.erd.importer/` — the plugin folder (`plugin.xml`, compiled classes, icons)
+- `src/erdimport/` — Java source
 - `release/` — the installable zip
+- `build.sh` — rebuilds the classes and the zip
 
-> Note: this repo currently holds the compiled plugin only; the Java source is not included yet.
+## Build from source
+Needs a JDK (`javac`) and Visual Paradigm's `lib/openapi.jar`:
+
+```bash
+VP_HOME=~/Visual_Paradigm_CE_18.1 ./build.sh
+```
+
+| File | Role |
+|---|---|
+| `ImporterPlugin.java` | plugin entry point |
+| `ImportFileAction.java`, `PasteAction.java` | the two toolbar buttons |
+| `Runner.java` | asks for the PlantUML, runs the import, reports the result |
+| `PumlParser.java` → `Puml.java` | parses PlantUML into plain Java objects |
+| `VpImporter.java` | creates tables, columns, relationships and the diagram in VP |
+| `R.java` | reflection helpers for calling the VP API across versions |

@@ -1,0 +1,27 @@
+@startuml
+title Checkout
+start
+:Open cart;
+if (Cart empty?) then (yes)
+  :Show message;
+  stop
+elseif (Logged in?) then (no)
+  :Login;
+else (yes)
+endif
+:Enter address;
+while (Card valid?) is (no)
+  :Re-enter card;
+endwhile (yes)
+fork
+  :Send email;
+fork again
+  :Update stock;
+end fork
+repeat
+  :Poll payment;
+repeat while (Pending?) is (yes) not (no)
+note right: payment gateway\nmay be slow
+:Show receipt;
+stop
+@enduml

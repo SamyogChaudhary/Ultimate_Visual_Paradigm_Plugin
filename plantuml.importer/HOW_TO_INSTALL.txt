@@ -1,0 +1,104 @@
+PlantUML Importer - Visual Paradigm plugin (works in Community Edition)
+======================================================================
+
+What it does
+  Turns PlantUML diagrams into real Visual Paradigm models and diagrams, not pictures:
+  every class, actor, state, lifeline and line becomes a model element you can edit.
+
+    ER diagram (crow's foot)  tables, columns (PK, FK, type, NOT NULL, unique), relationships
+    Class diagram             classes, interfaces, enums, abstract classes, attributes, operations,
+                              packages, inheritance, realization, association, aggregation,
+                              composition, dependency, multiplicities, notes
+    Use case diagram          actors, use cases, system boundaries, packages, associations,
+                              include, extend (with extension points), generalization, notes
+    Sequence diagram          participants, actors, boundary/control/entity/database lifelines,
+                              sync, async, return, self, create and destroy messages, activation
+                              bars, autonumber, alt/else, opt, loop, par, break, critical, group,
+                              ref over, notes
+    Activity diagram          start, stop, end, actions, if/elseif/else, switch/case, while,
+                              repeat, fork/join, split, swimlanes, arrow labels, notes, and the
+                              old (*) --> "Step" syntax
+    State machine diagram     states, composite states, initial/final, choice, fork, join,
+                              history, transitions with event [guard] / action labels,
+                              entry / exit / do actions, notes
+    Component diagram         components ([Name] or component), interfaces (provided and
+                              required), packages, nodes, databases, dependencies
+    Deployment diagram        nodes, devices, artifacts, components, databases, clouds and more,
+                              nesting, communication paths, dependencies
+    Object diagram            objects (name : Class), fields, maps, links
+
+  The type of each @startuml block is detected automatically, so one file can hold several
+  diagrams of different types.
+
+Install (once)
+  1. In Visual Paradigm: Help > Install Plugin.
+  2. Choose "Install from a zip of plugin" and pick PlantUML_Importer_plugin.zip.
+     (Or unzip it and use "Install from a folder of plugin" with the plantuml.importer folder.)
+  3. Restart Visual Paradigm.
+  If you have the older "PlantUML ERD Importer" installed, remove it first; this one does
+  everything it did.
+
+Use
+  Open your project, then in the Plugins tab click:
+  - Import PlantUML File: pick one or more .puml files (you can select several at once).
+  - Paste PlantUML Code: paste the code from @startuml to @enduml and click OK.
+  Each @startuml ... @enduml block becomes one diagram, named after its title (or the file
+  name). A summary lists what was imported, anything skipped, and why.
+
+Importing again
+  Elements already in the project with the same name and type (tables, classes, actors,
+  use cases, packages, components, nodes, artifacts) are reused, not duplicated; only
+  missing columns, attributes and operations are added. A diagram whose name is taken gets
+  (2), (3) and so on. For a clean copy, import into a new project.
+
+Layout
+  Every diagram gets a tidy starting layout (flows top to bottom, swimlanes as columns,
+  actors beside the system, lifelines left to right). Drag shapes as you like afterwards.
+
+Good to know
+  - Sequence diagrams: found and lost messages ([-> A, A ->]) are skipped, because Visual
+    Paradigm needs a lifeline at both ends. Dividers (== x ==) and delays (...) only add space.
+  - State diagrams: concurrent regions (-- or ||) are drawn together in one composite state.
+  - Activity diagrams: partition / group boxes are not drawn; their steps are imported.
+  - Objects with fields but no class keep their field names on a class in the
+    "Object fields" package (Visual Paradigm needs a class to name a field).
+  - Interfaces in component diagrams are drawn as <<Interface>> classes.
+  - skinparam, colours, styles and !include are ignored.
+
+Syntax examples
+  See the examples folder of the project for one file per diagram type.
+
+Class diagrams
+  class A / abstract class B / interface I / enum E { X, Y } / annotation N / struct S
+  class A extends B implements I, J        "Long Name" as L        A <<Entity>>    Box<T>
+  Members inside { }:  -name : String   +getName() : String   {static} +MAX : int = 10
+                       Java style works too: -Long id   +void setName(String name)
+  Lines:  A <|-- B   I <|.. C   A *-- B   A o-- B   A --> B   A -- B   A ..> B
+          A "1" -- "0..*" B : label >
+  package / namespace NAME { ... }      note left of A : text
+
+Use case diagrams
+  actor Name / actor "Long Name" as A / :Long Name: as A
+  usecase "Name" as UC1 / (Name) as UC1 / (Name)
+  rectangle "System" { ... } becomes a system boundary.
+  Actor --> (Use case)   A <|-- B   (Base) .> (Other) : <<include>>   (Ext) .> (Base) : <<extend>>
+
+ER diagrams
+  entity "TABLE" as T { ... }   or   entity TABLE { ... }
+    * name : TYPE <<PK>>      * means NOT NULL. Tags: PK, FK, UQ (or PRIMARY KEY, NOT NULL,
+                              UNIQUE written after the type). Types like INT, VARCHAR(50), DECIMAL(10,2).
+    --                        columns above this line are the key when nothing is tagged PK
+  Crow's foot ends:  ||  exactly one    |o  zero or one    }|  one or many    }o  zero or many
+    PARENT ||--o{ CHILD : label        A }o--o{ B   (many-to-many: a link table A_B is added)
+  Optional hints, written as PlantUML comments (PlantUML itself ignores them):
+    ' vp-fk column            on the line under a relationship: the child column holding the FK
+    ' vp-pos TABLE x y w h    where to put a table; without these, Visual Paradigm lays it out
+
+Command line (optional)
+  Visual Paradigm's scripts/Plugin.sh can run the import without opening the app:
+    Plugin.sh -project base.vpp -pluginid plantuml.importer -pluginargs "out.vpp a.puml b.puml"
+  It imports the files into base.vpp and saves the result as out.vpp (use full paths).
+
+If something goes wrong
+  The summary says which diagram stopped, at which step, and why; other diagrams still
+  import. A copy is saved as plantuml-importer.log in the plugin folder (or your home folder).

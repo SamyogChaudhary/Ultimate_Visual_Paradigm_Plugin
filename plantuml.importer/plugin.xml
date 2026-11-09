@@ -1,19 +1,19 @@
 <plugin
-    id="plantuml.erd.importer"
-    name="PlantUML ERD Importer"
-    description="Imports crow's foot ER diagrams written in PlantUML as real Visual Paradigm tables, foreign keys and ER diagrams."
+    id="plantuml.importer"
+    name="PlantUML Importer"
+    description="Imports PlantUML diagrams as real Visual Paradigm models and diagrams: ER (crow's foot), class, use case, sequence, activity, state machine, component, deployment and object diagrams."
     provider="COMP601 Group - Person 5"
     class="erdimport.ImporterPlugin">
   <runtime>
     <library path="classes" relativePath="true"/>
   </runtime>
   <actionSets>
-    <actionSet id="plantuml.erd.importer.actionset">
+    <actionSet id="plantuml.importer.actionset">
       <action
-          id="plantuml.erd.importer.file"
+          id="plantuml.importer.file"
           actionType="generalAction"
-          label="Import ERD File"
-          tooltip="Import crow's foot ER diagram(s) from PlantUML files (.puml)"
+          label="Import PlantUML File"
+          tooltip="Import PlantUML diagrams (.puml) of any type: ER, class, use case, sequence, activity, state, component, deployment, object"
           icon="icons/import.png"
           style="normal"
           menuPath="Plugins/#"
@@ -21,10 +21,10 @@
         <actionController class="erdimport.ImportFileAction"/>
       </action>
       <action
-          id="plantuml.erd.importer.paste"
+          id="plantuml.importer.paste"
           actionType="generalAction"
-          label="Paste ERD Code"
-          tooltip="Paste crow's foot PlantUML code (@startuml ... @enduml) and import it"
+          label="Paste PlantUML Code"
+          tooltip="Paste PlantUML code (@startuml ... @enduml) and import it"
           icon="icons/paste.png"
           style="normal"
           menuPath="Plugins/#"

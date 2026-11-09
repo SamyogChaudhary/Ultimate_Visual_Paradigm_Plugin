@@ -1,0 +1,47 @@
+@startuml
+title Library System
+abstract class Person {
+  - name : String
+  - email : String
+  + {abstract} getRole() : String
+}
+class Member extends Person {
+  - memberId : int
+  - joined : Date = today
+  + borrow(book : Book) : Loan
+  + returnBook(loan : Loan) : void
+  + getRole() : String
+}
+class Librarian {
+  - staffNo : String
+  + addBook(b: Book, copies: int = 1) : void
+  + {static} count() : int
+}
+interface Searchable {
+  + search(term : String) : List<Book>
+}
+class Catalogue implements Searchable
+class Book {
+  - isbn : String
+  - title : String
+  # price : double
+  ~ status : BookStatus
+}
+enum BookStatus {
+  AVAILABLE
+  ON_LOAN
+  LOST
+}
+class Loan {
+  -dueDate: Date
+  +isOverdue(): boolean
+}
+Person <|-- Librarian
+Catalogue "1" o-- "0..*" Book : contains
+Member "1" -- "0..*" Loan : makes >
+Loan "*" --> "1" Book
+Book ..> BookStatus
+Library *-- Catalogue
+Library : - address : String
+note right of Loan : Loans last\n14 days
+@enduml

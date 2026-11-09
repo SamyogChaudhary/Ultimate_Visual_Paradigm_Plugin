@@ -1,0 +1,27 @@
+@startuml
+title Login Sequence
+autonumber
+actor User
+participant "Web UI" as UI
+control AuthController as Auth
+database UserDB
+User -> UI : enter credentials
+activate UI
+UI -> Auth : login(user, pass)
+activate Auth
+Auth -> UserDB : findUser(user)
+UserDB --> Auth : user record
+alt valid password
+  Auth -> Auth : createSession()
+  Auth --> UI : token
+else invalid
+  Auth --> UI : error
+end
+deactivate Auth
+loop 3 times
+  UI -> UI : refresh view
+end
+UI --> User : show dashboard
+deactivate UI
+note right of User : happy path
+@enduml

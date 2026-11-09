@@ -1,0 +1,19 @@
+@startuml
+package "com.shop.model" {
+  class Order {
+    +id : long
+    +total() : BigDecimal
+  }
+  class OrderLine
+}
+package "com.shop.service" {
+  class OrderService {
+    -repo : OrderRepository
+    +place(o : Order) : void
+  }
+  interface OrderRepository
+}
+Order *-- "1..*" OrderLine
+OrderService --> OrderRepository
+OrderService ..> Order
+@enduml

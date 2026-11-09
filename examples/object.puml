@@ -1,0 +1,16 @@
+@startuml
+title Objects
+object "alice : Customer" as alice {
+  name = "Alice"
+  id = 42
+}
+object order1
+order1 : total = 99.50
+order1 : status = PAID
+map Prices {
+  apple => 1.20
+  pear => 0.90
+}
+alice -- order1 : places
+order1 --> Prices
+@enduml

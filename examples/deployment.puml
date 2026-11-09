@@ -1,0 +1,15 @@
+@startuml
+title Deployment
+actor User
+node "Web Server" as WS {
+  artifact "shop.war" as WAR
+  component Nginx
+}
+node "DB Server" <<device>> {
+  database PostgreSQL
+}
+cloud "CDN"
+User --> WS : HTTPS
+WS -- PostgreSQL : JDBC
+WS ..> CDN
+@enduml

@@ -1,0 +1,22 @@
+@startuml
+title Order Lifecycle
+[*] --> New
+New --> Paid : pay [amount ok] / sendReceipt
+New --> Cancelled : cancel
+state Paid {
+  [*] --> Packing
+  Packing --> Shipped : ship
+  Shipped --> [*]
+}
+Paid --> Delivered
+state "Under Review" as Review
+Delivered --> Review : complaint
+Review : entry / open ticket
+Review : exit / close ticket
+state check <<choice>>
+Review --> check
+check --> Delivered : [rejected]
+check --> Refunded : [accepted]
+Refunded --> [*]
+Cancelled --> [*]
+@enduml

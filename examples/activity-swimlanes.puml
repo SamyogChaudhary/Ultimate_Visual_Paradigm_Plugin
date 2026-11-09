@@ -1,0 +1,18 @@
+@startuml
+title Leave Request
+|Employee|
+start
+:Submit request;
+|Manager|
+:Review request;
+if (Approve?) then (yes)
+  |HR|
+  :Record leave;
+else (no)
+  |Employee|
+  :Receive rejection;
+endif
+|Employee|
+:Get notified;
+stop
+@enduml

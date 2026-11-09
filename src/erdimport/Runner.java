@@ -22,7 +22,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 /** Asks for the PlantUML, runs the import and reports the result. */
 final class Runner {
-  private static final String TITLE = "PlantUML ERD Importer";
+  private static final String TITLE = "PlantUML Importer";
 
   private Runner() {}
 
@@ -32,7 +32,7 @@ final class Runner {
       Object vm = viewManager();
       Object made = R.tryCall(vm, "createJFileChooser");
       fc = made instanceof JFileChooser ? (JFileChooser) made : new JFileChooser();
-      fc.setDialogTitle("Choose PlantUML ERD file(s)");
+      fc.setDialogTitle("Choose PlantUML file(s)");
       fc.setMultiSelectionEnabled(true);
       fc.setFileFilter(new FileNameExtensionFilter("PlantUML files (*.puml, *.plantuml, *.pu, *.wsd, *.txt)", "puml", "plantuml", "pu", "wsd", "iuml", "txt"));
       String last = prefs("lastDir");
@@ -41,13 +41,7 @@ final class Runner {
       File[] files = fc.getSelectedFiles();
       if (files == null || files.length == 0) files = new File[] {fc.getSelectedFile()};
       if (files[0] != null && files[0].getParentFile() != null) prefs("lastDir", files[0].getParentFile().getAbsolutePath());
-      List<Puml.Diagram> all = new ArrayList<Puml.Diagram>();
-      for (File f : files) {
-        String text = new String(java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8");
-        String base = f.getName().replaceFirst("\\.[^.]+$", "");
-        all.addAll(PumlParser.parse(text, base));
-      }
-      run(all, true);
+      run(read(files), true);
     } catch (Throwable t) {
       fail(null, t, true);
     }
@@ -58,55 +52,162 @@ final class Runner {
       JTextArea area = new JTextArea(28, 90);
       area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
       JScrollPane pane = new JScrollPane(area);
-      int ok = JOptionPane.showConfirmDialog(root(), new Object[] {"Paste the PlantUML ERD code (from @startuml to @enduml):", pane},
+      int ok = JOptionPane.showConfirmDialog(root(), new Object[] {"Paste PlantUML code (from @startuml to @enduml). ER, class and use case diagrams are imported:", pane},
           TITLE, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
       if (ok != JOptionPane.OK_OPTION || area.getText().trim().length() == 0) return;
-      run(PumlParser.parse(area.getText(), "Pasted ERD"), true);
+      List<Named> blocks = new ArrayList<Named>();
+      for (UmlParser.Block b : UmlParser.split(area.getText())) blocks.add(new Named(b, "Pasted " + b.kind.label));
+      run(blocks, true);
     } catch (Throwable t) {
       fail(null, t, true);
     }
   }
 
-  /** Imports already-parsed diagrams. Also used by the tests. */
-  static VpImporter run(List<Puml.Diagram> diagrams, boolean interactive) {
-    VpImporter im = null;
-    try {
-      if (diagrams.isEmpty()) {
-        show("No entities were found. The importer reads PlantUML ER diagrams: 'entity' blocks and lines such as  A ||--o{ B.",
-            JOptionPane.WARNING_MESSAGE, interactive);
-        return null;
-      }
-      im = new VpImporter();
-      for (Puml.Diagram d : diagrams) im.importDiagram(d);
-      im.openFirst();
-      StringBuilder b = new StringBuilder();
-      b.append("Imported ").append(im.diagrams).append(im.diagrams == 1 ? " ER diagram" : " ER diagrams").append(":\n");
-      for (Puml.Diagram d : diagrams) b.append(" - ").append(d.title).append(" (").append(d.entities.size()).append(" tables, ").append(d.links.size()).append(" relationships)\n");
-      b.append("\nTables: ").append(im.newTables).append(" created");
-      if (im.reusedTables > 0) b.append(", ").append(im.reusedTables).append(" were already in the project and were reused");
-      b.append(".\nRelationships: ").append(im.newRels).append(" created");
-      if (im.reusedRels > 0) b.append(", ").append(im.reusedRels).append(" were already in the project and were reused");
-      b.append(".\n\nThe diagrams are in the Diagram Navigator under Entity Relationship Diagram.\n")
-          .append("If any boxes overlap, just drag them apart.");
-      if (!im.warnings.isEmpty()) {
-        b.append("\n\nNotes:\n");
-        for (String w : im.warnings) b.append(" - ").append(w).append('\n');
-      }
-      String path = writeLog(b.toString() + "\n\n" + im.log);
-      if (path != null) b.append("\n\nLog: ").append(path);
-      show(b.toString(), JOptionPane.INFORMATION_MESSAGE, interactive);
-    } catch (Throwable t) {
-      fail(im, t, interactive);
-    }
-    return im;
+  /** A block with the name to use when it has no title. */
+  static final class Named {
+    final UmlParser.Block block;
+    final String fallback;
+    Named(UmlParser.Block block, String fallback) { this.block = block; this.fallback = fallback; }
   }
 
-  private static void fail(VpImporter im, Throwable t, boolean interactive) {
+  static List<Named> read(File[] files) throws Exception {
+    List<Named> out = new ArrayList<Named>();
+    for (File f : files) {
+      String text = new String(java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8");
+      String base = f.getName().replaceFirst("\\.[^.]+$", "");
+      List<UmlParser.Block> blocks = UmlParser.split(text);
+      for (int i = 0; i < blocks.size(); i++) out.add(new Named(blocks.get(i), blocks.size() == 1 ? base : base + " " + (i + 1)));
+    }
+    return out;
+  }
+
+  /** Imports the blocks: ER diagrams as tables, class and use case diagrams as UML. Also used from the command line. */
+  static boolean run(List<Named> blocks, boolean interactive) {
+    VpImporter erd = null;
+    UmlImporter uml = null;
+    SeqImporter seq = null;
+    Object current = null;
+    try {
+      List<Puml.Diagram> erds = new ArrayList<Puml.Diagram>();
+      List<Uml.Diagram> umls = new ArrayList<Uml.Diagram>();
+      List<SeqParser.Diagram> seqs = new ArrayList<SeqParser.Diagram>();
+      List<String> skipped = new ArrayList<String>();
+      for (Named n : blocks) {
+        Uml.Kind k = n.block.kind;
+        if (k == Uml.Kind.ERD) erds.addAll(PumlParser.parse(n.block.text, n.fallback));
+        else if (k == Uml.Kind.SEQUENCE) seqs.add(SeqParser.parse(n.block.text, n.fallback));
+        else if (k != Uml.Kind.UNKNOWN) umls.add(UmlParser.parseAny(n.block, n.fallback));
+        else skipped.add(n.fallback + ": the diagram type was not recognised");
+      }
+      if (erds.isEmpty() && umls.isEmpty() && seqs.isEmpty()) {
+        StringBuilder b = new StringBuilder("Nothing to import. No PlantUML diagram was found between @startuml and @enduml.");
+        for (String s : skipped) b.append("\n - ").append(s);
+        show(b.toString(), JOptionPane.WARNING_MESSAGE, interactive);
+        return false;
+      }
+      StringBuilder b = new StringBuilder();
+      StringBuilder log = new StringBuilder();
+      List<String> notes = new ArrayList<String>();
+      if (!erds.isEmpty()) {
+        erd = new VpImporter();
+        current = erd;
+        for (Puml.Diagram d : erds) erd.importDiagram(d);
+        b.append("ER diagrams: ").append(erd.diagrams).append('\n');
+        for (Puml.Diagram d : erds) b.append(" - ").append(d.title).append(" (").append(d.entities.size()).append(" tables, ").append(d.links.size()).append(" relationships)\n");
+        b.append("Tables: ").append(erd.newTables).append(" created");
+        if (erd.reusedTables > 0) b.append(", ").append(erd.reusedTables).append(" already in the project and reused");
+        b.append(". Relationships: ").append(erd.newRels).append(" created");
+        if (erd.reusedRels > 0) b.append(", ").append(erd.reusedRels).append(" reused");
+        b.append(".\n\n");
+        notes.addAll(erd.warnings);
+        log.append(erd.log);
+      }
+      if (!umls.isEmpty() || !seqs.isEmpty()) {
+        uml = new UmlImporter();
+        current = uml;
+        List<String> done = new ArrayList<String>();
+        for (Uml.Diagram d : umls) {
+          try { // one bad diagram should not stop the others
+            uml.importDiagram(d);
+            done.add(" - " + d.title + " (" + d.kind.label + ", " + d.nodes.size() + " elements, " + d.links.size() + " relationships)");
+          } catch (Throwable t) {
+            skipped.add(d.title + ": stopped while trying to " + uml.step + " (" + cause(t) + ")");
+          }
+        }
+        if (!seqs.isEmpty()) {
+          seq = new SeqImporter(uml);
+          current = seq;
+          for (SeqParser.Diagram d : seqs) {
+            try {
+              seq.importDiagram(d);
+              done.add(" - " + d.title + " (sequence diagram, " + d.participants.size() + " lifelines, " + d.messages.size() + " messages)");
+            } catch (Throwable t) {
+              skipped.add(d.title + ": stopped while trying to " + seq.step + " (" + cause(t) + ")");
+            }
+          }
+          notes.addAll(seq.warnings);
+          log.append(seq.log);
+        }
+        if (!done.isEmpty()) {
+          b.append("UML diagrams: ").append(done.size()).append('\n');
+          for (String s : done) b.append(s).append('\n');
+          if (!umls.isEmpty()) {
+            b.append("Elements: ").append(uml.created).append(" created");
+            if (uml.reused > 0) b.append(", ").append(uml.reused).append(" already in the project and reused");
+            b.append(".\n");
+          }
+          b.append('\n');
+        }
+        notes.addAll(0, uml.warnings);
+        log.insert(0, uml.log);
+      }
+      int made = (erd == null ? 0 : erd.diagrams) + (uml == null ? 0 : uml.diagrams) + (seq == null ? 0 : seq.diagrams);
+      if (made == 0) {
+        StringBuilder f = new StringBuilder("No diagram could be imported.\n");
+        for (String sk : skipped) f.append(" - ").append(sk).append('\n');
+        String path = writeLog(f.toString() + "\n\n" + log);
+        if (path != null) f.append("\nLog: ").append(path);
+        show(f.toString(), JOptionPane.WARNING_MESSAGE, interactive);
+        return false;
+      }
+      Object first = uml != null && uml.firstDiagram != null ? uml.firstDiagram : seq != null && seq.firstDiagram != null ? seq.firstDiagram : null;
+      if (first != null) R.tryCall(R.call(R.st("com.vp.plugin.ApplicationManager", "instance"), "getDiagramManager"), "openDiagram", first);
+      else if (erd != null) erd.openFirst();
+      b.append("The diagrams are in the Diagram Navigator. Shapes get a tidy starting layout; drag them as you like.");
+      if (!skipped.isEmpty()) {
+        b.append("\n\nNot imported:\n");
+        for (String s : skipped) b.append(" - ").append(s).append('\n');
+      }
+      if (!notes.isEmpty()) {
+        b.append("\n\nNotes:\n");
+        for (String w : notes) b.append(" - ").append(w).append('\n');
+      }
+      String path = writeLog(b.toString() + "\n\n" + log);
+      if (path != null) b.append("\n\nLog: ").append(path);
+      show(b.toString(), skipped.isEmpty() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE, interactive);
+      return true;
+    } catch (Throwable t) {
+      fail(current, t, interactive);
+      return false;
+    }
+  }
+
+  private static String cause(Throwable t) {
+    Throwable c = t;
+    while (c.getCause() != null && c.getCause() != c) c = c.getCause();
+    return c.getMessage() != null ? c.getMessage() : c.toString();
+  }
+
+  private static void fail(Object im, Throwable t, boolean interactive) {
     StringWriter sw = new StringWriter();
     t.printStackTrace(new PrintWriter(sw));
-    String msg = "Stopped while trying to " + (im == null ? "start" : im.step) + ".\n\n" + t
+    String step = im instanceof VpImporter ? ((VpImporter) im).step : im instanceof UmlImporter ? ((UmlImporter) im).step
+        : im instanceof SeqImporter ? ((SeqImporter) im).step : "start";
+    Object done = im instanceof VpImporter ? ((VpImporter) im).log : im instanceof UmlImporter ? ((UmlImporter) im).log
+        : im instanceof SeqImporter ? ((SeqImporter) im).log : null;
+    String msg = "Stopped while trying to " + step + ".\n\n" + t
         + "\n\nSend a screenshot of this message to get it fixed.\n\n"
-        + (im == null ? "" : "Done before the error:\n" + im.log) + "\nDetails:\n" + sw;
+        + (done == null ? "" : "Done before the error:\n" + done) + "\nDetails:\n" + sw;
     String path = writeLog(msg);
     if (path != null) msg = "Log: " + path + "\n\n" + msg;
     show(msg, JOptionPane.ERROR_MESSAGE, interactive);
@@ -135,7 +236,7 @@ final class Runner {
   private static String writeLog(String text) {
     File dir = ImporterPlugin.pluginDir;
     if (dir == null || !dir.isDirectory()) dir = new File(System.getProperty("user.home", "."));
-    File f = new File(dir, "plantuml-erd-importer.log");
+    File f = new File(dir, "plantuml-importer.log");
     Writer w = null;
     try {
       w = new OutputStreamWriter(new FileOutputStream(f), "UTF-8");

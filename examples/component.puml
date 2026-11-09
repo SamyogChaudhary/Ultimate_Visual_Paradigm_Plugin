@@ -1,0 +1,18 @@
+@startuml
+title Shop Components
+package "Front End" {
+  [Web App] as Web
+  [Mobile App]
+}
+component "Order Service" as OS
+component [Payment Service] as PS
+interface "REST API" as API
+() "Payments" as PAY
+database "Orders DB" as DB
+Web --> API
+[Mobile App] ..> API
+OS - API
+PS - PAY
+OS --> PAY
+OS --> DB : SQL
+@enduml

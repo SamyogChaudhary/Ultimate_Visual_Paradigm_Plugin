@@ -1,0 +1,24 @@
+@startuml
+title Online Shop
+left to right direction
+actor Customer
+actor "Store Admin" as Admin
+actor :Payment Gateway: as PG
+rectangle "Online Shop" {
+  usecase "Browse Products" as UC1
+  usecase "Place Order" as UC2
+  (Make Payment) as UC3
+  (Login)
+  (Apply Discount) as UC5
+  usecase "Manage Stock" as UC6
+}
+Customer --> UC1
+Customer --> UC2
+Admin --> UC6
+Admin --> (Login)
+UC2 .> UC3 : <<include>>
+UC2 ..> (Login) : include
+UC5 .> UC2 : <<extend>>
+UC3 --> PG
+Customer <|-- :VIP Customer:
+@enduml
